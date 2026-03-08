@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartInv · Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --navy:#1e2a45;
+  --navy2:#253254;
+  --navy3:#1a2236;
+  --active:#2a3d6e;
+  --accent:#3b82f6;
+  --bg:#f1f5fb;
+  --white:#ffffff;
+  --border:#e2e8f4;
+  --tx:#1e2a45;
+  --tx2:#64748b;
+  --tx3:#94a3b8;
+  --blue:#3b82f6;
+  --green:#22c55e;
+  --orange:#f59e0b;
+  --red:#ef4444;
+  --purple:#8b5cf6;
+  --cyan:#06b6d4;
+  --sb:280px;
+  --sc:68px;
+  --nh:62px;
+  --r:14px;
+}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14.5px;overflow-x:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:4px;}
+button,input,select{font-family:inherit;cursor:pointer;}
+a{text-decoration:none;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.sb{
+  width:var(--sb);min-width:var(--sb);height:100vh;
+  background:var(--navy);
+  display:flex;flex-direction:column;
+  position:fixed;left:0;top:0;z-index:1000;
+  transition:width .26s ease,min-width .26s ease;overflow:hidden;
+}
+.sb.c{width:var(--sc);min-width:var(--sc);}
+
+.sb-top{
+  height:var(--nh);display:flex;align-items:center;
+  padding:0 20px;gap:12px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  flex-shrink:0;white-space:nowrap;overflow:hidden;
+}
+.sb-logo{
+  width:38px;height:38px;min-width:38px;border-radius:11px;
+  background:var(--blue);
+  display:flex;align-items:center;justify-content:center;
+}
+.sb-logo svg{width:20px;height:20px;color:#fff;}
+.sb-brand{font-size:1.15rem;font-weight:800;color:#fff;letter-spacing:-.02em;}
+.sb-brand span{color:var(--accent);font-weight:800;}
+.sb.c .sb-brand{display:none;}
+
+.sb-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 10px 0;}
+.sb-sec{margin-bottom:6px;}
+.sb-lbl{
+  font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:rgba(255,255,255,.3);padding:14px 10px 5px;
+  white-space:nowrap;overflow:hidden;
+}
+.sb.c .sb-lbl{opacity:0;height:0;padding:0;overflow:hidden;}
+
+.nv{
+  display:flex;align-items:center;gap:11px;width:100%;
+  padding:9px 10px;border:none;background:none;
+  color:rgba(255,255,255,.6);border-radius:9px;
+  font-size:.875rem;font-weight:500;
+  transition:all .16s;white-space:nowrap;overflow:hidden;
+  position:relative;cursor:pointer;
+}
+.nv:hover{background:rgba(255,255,255,.07);color:#fff;}
+.nv.a{background:var(--active);color:#fff;}
+.nv.a::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;background:var(--blue);border-radius:0 3px 3px 0;}
+.nv-ic{
+  width:32px;height:32px;min-width:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:rgba(255,255,255,.06);transition:background .16s;
+}
+.nv.a .nv-ic{background:rgba(59,130,246,.22);}
+.nv-ic svg{width:15px;height:15px;}
+.nv-tx{overflow:hidden;font-weight:600;}
+.sb.c .nv-tx{opacity:0;width:0;}
+
+.sb-ft{padding:10px;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+.col-btn{
+  display:flex;align-items:center;gap:11px;width:100%;
+  padding:9px 10px;border:none;background:none;
+  color:rgba(255,255,255,.5);border-radius:9px;
+  font-size:.875rem;font-weight:600;
+  transition:all .16s;white-space:nowrap;overflow:hidden;
+}
+.col-btn:hover{background:rgba(255,255,255,.07);color:#fff;}
+.col-ic{display:flex;align-items:center;justify-content:center;min-width:32px;transition:transform .26s;}
+.col-ic svg{width:16px;height:16px;}
+.sb.c .col-ic{transform:rotate(180deg);}
+.col-tx{overflow:hidden;}
+.sb.c .col-tx{opacity:0;width:0;}
+
+/* ── MAIN ── */
+.main{flex:1;margin-left:var(--sb);transition:margin-left .26s ease;display:flex;flex-direction:column;min-height:100vh;}
+.sb.c~.main{margin-left:var(--sc);}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:var(--nh);background:var(--white);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;position:sticky;top:0;z-index:900;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+.tb-l{display:flex;align-items:center;gap:14px;}
+.ham{
+  width:34px;height:34px;border:none;background:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--tx2);border-radius:8px;
+  transition:all .16s;
+}
+.ham:hover{background:var(--bg);color:var(--tx);}
+.ham svg{width:18px;height:18px;}
+#pgTitle{font-size:1.1rem;font-weight:700;color:var(--tx);}
+
+.tb-r{display:flex;align-items:center;gap:10px;}
+.srch{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:20px;padding:6px 14px;width:160px;
+  transition:all .2s;
+}
+.srch:focus-within{border-color:var(--blue);width:200px;}
+.srch svg{width:14px;height:14px;color:var(--tx3);flex-shrink:0;}
+.srch input{background:none;border:none;outline:none;color:var(--tx);font-size:.82rem;width:100%;}
+.srch input::placeholder{color:var(--tx3);}
+
+.tb-icon{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--bg);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--tx2);position:relative;transition:all .16s;
+}
+.tb-icon:hover{border-color:var(--blue);color:var(--blue);}
+.tb-icon svg{width:15px;height:15px;}
+.tb-dot{
+  position:absolute;top:-1px;right:-1px;
+  background:var(--red);color:#fff;font-size:.58rem;font-weight:700;
+  width:16px;height:16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--white);
+}
+.ava{
+  width:34px;height:34px;border-radius:50%;
+  border:2px solid var(--border);overflow:hidden;cursor:pointer;
+}
+.ava img{width:100%;height:100%;object-fit:cover;display:block;}
+
+/* ── CONTENT ── */
+.ct{padding:22px 24px;flex:1;}
+
+/* ── STAT CARDS ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.sc{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px 22px;
+  display:flex;align-items:center;gap:16px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+  transition:box-shadow .18s,transform .18s;
+}
+.sc:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-2px);}
+.sc-ico{
+  width:52px;height:52px;min-width:52px;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.sc-ico svg{width:24px;height:24px;color:#fff;}
+.sc-ico.bl{background:linear-gradient(135deg,#3b82f6,#2563eb);}
+.sc-ico.gr{background:linear-gradient(135deg,#22c55e,#16a34a);}
+.sc-ico.or{background:linear-gradient(135deg,#f59e0b,#d97706);}
+.sc-ico.re{background:linear-gradient(135deg,#ef4444,#dc2626);}
+.sc-info{flex:1;}
+.sc-val{font-size:1.75rem;font-weight:800;color:var(--tx);line-height:1;margin-bottom:4px;letter-spacing:-.03em;}
+.sc-lbl{font-size:.8rem;font-weight:500;color:var(--tx2);}
+
+/* ── CHARTS ROW ── */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+.cc{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.cc-head{margin-bottom:16px;}
+.cc-title{font-size:.95rem;font-weight:700;color:var(--tx);}
+.cc-sub{font-size:.76rem;color:var(--tx3);margin-top:2px;}
+.cc-body{height:240px;position:relative;}
+
+/* ── TABLE SECTION ── */
+.tc{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--r);
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+  overflow:hidden;margin-bottom:20px;
+}
+.tc-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  flex-wrap:wrap;gap:10px;
+}
+.tc-head h4{font-size:.95rem;font-weight:700;color:var(--tx);}
+.tc-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.tsc{overflow:auto;max-height:320px;}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:#f8faff;}
+thead{position:sticky;top:0;z-index:1;}
+th{
+  padding:10px 16px;text-align:left;font-size:.71rem;
+  font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--tx3);border-bottom:1px solid var(--border);white-space:nowrap;
+}
+td{padding:11px 16px;font-size:.86rem;border-bottom:1px solid #f1f5fb;vertical-align:middle;}
+tbody tr:hover{background:#f8faff;}
+tbody tr:last-child td{border-bottom:none;}
+.tdm{color:var(--tx2);}
+
+.pl{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:20px;font-size:.73rem;font-weight:600;
+}
+.pl::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+.pl.ok{background:#dcfce7;color:#16a34a;}
+.pl.lo{background:#fee2e2;color:#dc2626;}
+
+.ab{
+  width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;transition:all .14s;
+}
+.ab svg{width:12px;height:12px;}
+.ab.ed{background:#eff6ff;color:#3b82f6;}
+.ab.ed:hover{background:#dbeafe;}
+.ab.dl{background:#fef2f2;color:#ef4444;}
+.ab.dl:hover{background:#fee2e2;}
+
+/* ── FILTER / BUTTONS ── */
+.flt{
+  padding:6px 11px;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;color:var(--tx2);font-size:.81rem;outline:none;
+  transition:border .15s;font-family:inherit;
+}
+.flt:focus{border-color:var(--blue);}
+.flt option{background:#fff;}
+
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 15px;border-radius:8px;border:none;cursor:pointer;
+  font-size:.83rem;font-weight:600;font-family:inherit;transition:all .16s;
+}
+.btn svg{width:13px;height:13px;flex-shrink:0;}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue:hover{background:#2563eb;box-shadow:0 3px 12px rgba(59,130,246,.3);}
+.btn-gh{background:var(--bg);color:var(--tx2);border:1px solid var(--border);}
+.btn-gh:hover{background:#e8edf5;color:var(--tx);}
+.btn-red{background:#fef2f2;color:#ef4444;border:1px solid #fee2e2;}
+.btn-red:hover{background:#fee2e2;}
+.btn-green{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
+.btn-green:hover{background:#dcfce7;}
+
+.upl{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 13px;background:#f0fdf4;border:1px solid #bbf7d0;
+  border-radius:8px;color:#16a34a;font-size:.81rem;font-weight:600;
+  cursor:pointer;transition:all .16s;
+}
+.upl:hover{background:#dcfce7;}
+.upl svg{width:13px;height:13px;}
+.upl input{display:none;}
+
+/* ── PAGE HEADER ── */
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:10px;flex-wrap:wrap;}
+.ph h3{font-size:1.05rem;font-weight:700;color:var(--tx);}
+.ph-sub{font-size:.82rem;color:var(--tx2);margin-top:1px;}
+
+/* ── FORM ── */
+.fc{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--r);padding:26px;max-width:580px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.fc-title{font-size:.95rem;font-weight:700;color:var(--tx);margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.fc-title svg{width:16px;height:16px;color:var(--blue);}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.fg2{grid-column:span 2;}
+.fg3{display:flex;flex-direction:column;gap:5px;}
+.flbl{font-size:.72rem;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.07em;}
+.fin{
+  padding:9px 13px;background:var(--bg);
+  border:1.5px solid var(--border);border-radius:9px;
+  color:var(--tx);font-size:.88rem;outline:none;
+  font-family:inherit;transition:all .16s;width:100%;
+}
+.fin:focus{border-color:var(--blue);background:#fff;}
+.fin option{background:#fff;}
+.fbt{display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+
+/* ── SETTINGS ── */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.scc{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:22px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.scc-title{font-size:.9rem;font-weight:700;color:var(--tx);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.scc-title svg{width:15px;height:15px;}
+.si2{font-size:.84rem;color:var(--tx2);line-height:2.2;}
+.si2 strong{color:var(--tx);}
+
+/* ── LOG ── */
+.li{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.li:last-child{border:none;}
+.lic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.lic svg{width:13px;height:13px;}
+.lic.g{background:#f0fdf4;color:#16a34a;}
+.lic.b{background:#eff6ff;color:#3b82f6;}
+.lic.r{background:#fef2f2;color:#ef4444;}
+
+/* ── SUPPLIER AVATAR ── */
+.sav{width:32px;height:32px;min-width:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;}
+
+/* ── PROGRESS ── */
+.pw{display:flex;align-items:center;gap:8px;}
+.pg{flex:1;height:6px;background:#f1f5fb;border-radius:3px;overflow:hidden;}
+.pgf{height:100%;border-radius:3px;}
+.pct{font-size:.75rem;color:var(--tx2);min-width:34px;text-align:right;font-weight:600;}
+
+/* ── EMPTY ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;gap:10px;color:var(--tx3);}
+.empty svg{width:40px;height:40px;opacity:.25;}
+.empty p{font-size:.88rem;}
+
+/* ── TOAST ── */
+.tw{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:7px;pointer-events:none;}
+.tst{
+  display:flex;align-items:center;gap:9px;padding:12px 17px;
+  border-radius:10px;font-size:.86rem;font-weight:600;
+  box-shadow:0 4px 18px rgba(0,0,0,.12);
+  animation:tIn .28s cubic-bezier(.34,1.4,.64,1) both;
+}
+.tst svg{width:15px;height:15px;flex-shrink:0;}
+.tst.ok{background:#fff;color:#16a34a;border-left:3px solid #16a34a;}
+.tst.er{background:#fff;color:#ef4444;border-left:3px solid #ef4444;}
+.tst.if{background:#fff;color:#3b82f6;border-left:3px solid #3b82f6;}
+@keyframes tIn{from{transform:translateX(40px) scale(.95);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes fUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.fd{animation:fUp .28s ease both;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){.stats{grid-template-columns:1fr 1fr;}}
+@media(max-width:900px){
+  .stats{grid-template-columns:1fr 1fr;}.chart-row{grid-template-columns:1fr;}.sg{grid-template-columns:1fr;}
+  .sb{width:var(--sc);min-width:var(--sc);}
+  .sb .sb-brand,.sb .sb-lbl,.sb .nv-tx,.sb .col-tx{display:none;opacity:0;width:0;}
+  .main{margin-left:var(--sc)!important;}
+}
+@media(max-width:600px){.stats{grid-template-columns:1fr;}.ct{padding:14px 16px;}.fg{grid-template-columns:1fr!important;}.fg2{grid-column:auto;}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sb" id="sb">
+  <div class="sb-top">
+    <div class="sb-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><line x1="12" y1="22.08" x2="12" y2="12"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/></svg>
+    </div>
+    <span class="sb-brand">Smart<span>Inv</span>.</span>
+  </div>
+
+  <div class="sb-body">
+    <div class="sb-sec">
+      <div class="sb-lbl">Navigation</div>
+      <button class="nv a" id="nb-dashboard" onclick="goTab('dashboard',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+        <span class="nv-tx">Dashboard</span>
+      </button>
+      <button class="nv" id="nb-products" onclick="goTab('products',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+        <span class="nv-tx">Products</span>
+      </button>
+      <button class="nv" id="nb-add-product" onclick="goTab('add-product',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
+        <span class="nv-tx">Add Product</span>
+      </button>
+      <button class="nv" id="nb-suppliers" onclick="goTab('suppliers',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+        <span class="nv-tx">Suppliers</span>
+      </button>
+      <button class="nv" id="nb-add-supplier" onclick="goTab('add-supplier',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></span>
+        <span class="nv-tx">Add Supplier</span>
+      </button>
+      <button class="nv" id="nb-inventory" onclick="goTab('inventory',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+        <span class="nv-tx">Inventory</span>
+      </button>
+      <button class="nv" id="nb-logs" onclick="goTab('logs',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        <span class="nv-tx">Stock Logs</span>
+      </button>
+      <button class="nv" id="nb-settings" onclick="goTab('settings',this)">
+        <span class="nv-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        <span class="nv-tx">Settings</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="sb-ft">
+    <button class="col-btn" onclick="toggleSB()">
+      <span class="col-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg></span>
+      <span class="col-tx">Collapse</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <header class="topbar">
+    <div class="tb-l">
+      <button class="ham" onclick="toggleSB()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span id="pgTitle">Dashboard Overview</span>
+    </div>
+    <div class="tb-r">
+      <div class="srch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gS" placeholder="Search…" oninput="onS()">
+      </div>
+      <div class="tb-icon" onclick="goTab('logs',document.getElementById('nb-logs'))">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="tb-dot" id="nB">0</span>
+      </div>
+      <div class="ava">
+        <img src="https://ui-avatars.com/api/?name=Admin&background=3b82f6&color=fff&bold=true&size=72" alt="A">
+      </div>
+    </div>
+  </header>
+
+  <div class="ct" id="ct"></div>
+</div>
+</div>
+
+<div class="tw" id="tw"></div>
+
+<script>
+// ═══ DATA ═══
+const RAW=[{ProductID:"P001",ProductName:"Groceries",Price:33.5,Quantity:231,Supplier:"North"},{ProductID:"P002",ProductName:"Toys",Price:63.01,Quantity:204,Supplier:"South"},{ProductID:"P003",ProductName:"Toys",Price:27.99,Quantity:102,Supplier:"West"},{ProductID:"P004",ProductName:"Toys",Price:32.72,Quantity:469,Supplier:"North"},{ProductID:"P005",ProductName:"Electronics",Price:73.64,Quantity:166,Supplier:"East"},{ProductID:"P006",ProductName:"Groceries",Price:76.83,Quantity:138,Supplier:"South"},{ProductID:"P007",ProductName:"Furniture",Price:34.16,Quantity:359,Supplier:"East"},{ProductID:"P008",ProductName:"Clothing",Price:97.99,Quantity:380,Supplier:"North"},{ProductID:"P009",ProductName:"Electronics",Price:20.74,Quantity:183,Supplier:"West"},{ProductID:"P010",ProductName:"Toys",Price:59.99,Quantity:108,Supplier:"South"},{ProductID:"P011",ProductName:"Furniture",Price:58.53,Quantity:258,Supplier:"South"},{ProductID:"P012",ProductName:"Clothing",Price:58.25,Quantity:66,Supplier:"West"},{ProductID:"P013",ProductName:"Toys",Price:43.6,Quantity:96,Supplier:"South"},{ProductID:"P014",ProductName:"Clothing",Price:78.11,Quantity:193,Supplier:"West"},{ProductID:"P015",ProductName:"Clothing",Price:92.99,Quantity:379,Supplier:"North"},{ProductID:"P016",ProductName:"Electronics",Price:21.9,Quantity:363,Supplier:"North"},{ProductID:"P017",ProductName:"Toys",Price:21.07,Quantity:318,Supplier:"West"},{ProductID:"P018",ProductName:"Clothing",Price:19.57,Quantity:241,Supplier:"South"},{ProductID:"P019",ProductName:"Clothing",Price:73.28,Quantity:352,Supplier:"East"},{ProductID:"P020",ProductName:"Toys",Price:30.24,Quantity:274,Supplier:"East"},{ProductID:"P021",ProductName:"Groceries",Price:32.8,Quantity:343,Supplier:"South"},{ProductID:"P022",ProductName:"Clothing",Price:46.16,Quantity:373,Supplier:"West"},{ProductID:"P023",ProductName:"Furniture",Price:20.46,Quantity:445,Supplier:"East"},{ProductID:"P024",ProductName:"Toys",Price:26.19,Quantity:191,Supplier:"West"},{ProductID:"P025",ProductName:"Toys",Price:83.29,Quantity:281,Supplier:"West"},{ProductID:"P026",ProductName:"Furniture",Price:85.59,Quantity:492,Supplier:"North"},{ProductID:"P027",ProductName:"Groceries",Price:91.13,Quantity:460,Supplier:"West"},{ProductID:"P028",ProductName:"Electronics",Price:66.96,Quantity:304,Supplier:"West"},{ProductID:"P029",ProductName:"Clothing",Price:81.29,Quantity:113,Supplier:"South"},{ProductID:"P030",ProductName:"Electronics",Price:60.84,Quantity:157,Supplier:"North"},{ProductID:"P031",ProductName:"Groceries",Price:34.62,Quantity:67,Supplier:"West"},{ProductID:"P032",ProductName:"Groceries",Price:19.56,Quantity:281,Supplier:"East"},{ProductID:"P033",ProductName:"Clothing",Price:57.78,Quantity:389,Supplier:"East"},{ProductID:"P034",ProductName:"Electronics",Price:91.28,Quantity:465,Supplier:"East"},{ProductID:"P035",ProductName:"Toys",Price:59.9,Quantity:197,Supplier:"South"},{ProductID:"P036",ProductName:"Toys",Price:45.65,Quantity:242,Supplier:"South"},{ProductID:"P037",ProductName:"Groceries",Price:11.71,Quantity:398,Supplier:"West"},{ProductID:"P038",ProductName:"Groceries",Price:58.84,Quantity:234,Supplier:"North"},{ProductID:"P039",ProductName:"Toys",Price:84.99,Quantity:67,Supplier:"East"},{ProductID:"P040",ProductName:"Toys",Price:87.1,Quantity:221,Supplier:"West"},{ProductID:"P041",ProductName:"Toys",Price:67.21,Quantity:241,Supplier:"South"},{ProductID:"P042",ProductName:"Electronics",Price:28.2,Quantity:115,Supplier:"West"},{ProductID:"P043",ProductName:"Groceries",Price:56.16,Quantity:375,Supplier:"South"},{ProductID:"P044",ProductName:"Toys",Price:89.53,Quantity:153,Supplier:"South"},{ProductID:"P045",ProductName:"Clothing",Price:97.95,Quantity:438,Supplier:"West"},{ProductID:"P046",ProductName:"Groceries",Price:76.37,Quantity:456,Supplier:"North"},{ProductID:"P047",ProductName:"Electronics",Price:86.99,Quantity:189,Supplier:"North"},{ProductID:"P048",ProductName:"Toys",Price:66.53,Quantity:223,Supplier:"North"},{ProductID:"P049",ProductName:"Groceries",Price:74.86,Quantity:381,Supplier:"South"},{ProductID:"P050",ProductName:"Groceries",Price:97.09,Quantity:166,Supplier:"South"}];
+let inv=RAW.map((r,i)=>({...r,_id:i}));
+let logs=[];let cT='dashboard';let CH={};
+
+// ═══ NAV ═══
+const TTLS={dashboard:'Dashboard Overview',products:'Products',
+  'add-product':'Add Product',suppliers:'Suppliers',
+  'add-supplier':'Add Supplier',inventory:'Inventory',
+  logs:'Stock Logs',settings:'Settings'};
+
+function goTab(t,el){
+  cT=t;document.getElementById('pgTitle').textContent=TTLS[t]||t;
+  document.querySelectorAll('.nv').forEach(b=>b.classList.remove('a'));
+  (el||document.getElementById('nb-'+t))?.classList.add('a');
+  Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}});CH={};
+  ({dashboard:rD,products:rP,'add-product':rAP,
+    suppliers:rS,'add-supplier':rAS,inventory:rI,
+    logs:rL,settings:rSt}[t]||rD)();
+}
+function toggleSB(){document.getElementById('sb').classList.toggle('c');}
+
+// ═══ SVG ICONS ═══
+const s=(d,w)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="${w||14}" height="${w||14}">${d}</svg>`;
+const IC={
+  plus:s('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
+  save:s('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>'),
+  del:s('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',13),
+  pen:s('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',13),
+  excel:s('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'),
+  reset:s('<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.87"/>'),
+  ok:s('<polyline points="20 6 9 17 4 12"/>'),
+  x:s('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  info:s('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'),
+  box:s('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>',20),
+  truck:s('<rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',20),
+  cubes:s('<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',20),
+  warn:s('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',20),
+  sliders:s('<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>'),
+  db:s('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>')
+};
+
+// ═══ CHART COLORS ═══
+const CLRS=['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+
+// ═══ DASHBOARD ═══
+function rD(){
+  const total=inv.length;
+  const sups=[...new Set(inv.map(i=>i.Supplier))];
+  const tQ=inv.reduce((s,i)=>s+i.Quantity,0);
+  const low=inv.filter(i=>i.Quantity<50).length;
+  document.getElementById('nB').textContent=low;
+
+  // category & supplier maps
+  const cM={},sM={};
+  inv.forEach(i=>{
+    cM[i.ProductName]=(cM[i.ProductName]||0)+i.Quantity;
+    sM[i.Supplier]=(sM[i.Supplier]||0)+i.Quantity;
+  });
+
+  P(`<div class="fd">
+  <div class="stats">
+    <div class="sc"><div class="sc-ico bl">${IC.box}</div><div class="sc-info"><div class="sc-val">${total}</div><div class="sc-lbl">Total Products</div></div></div>
+    <div class="sc"><div class="sc-ico gr">${IC.truck}</div><div class="sc-info"><div class="sc-val">${sups.length}</div><div class="sc-lbl">Total Suppliers</div></div></div>
+    <div class="sc"><div class="sc-ico or">${IC.cubes}</div><div class="sc-info"><div class="sc-val">${tQ.toLocaleString()}</div><div class="sc-lbl">Total Inventory Items</div></div></div>
+    <div class="sc"><div class="sc-ico re">${IC.warn}</div><div class="sc-info"><div class="sc-val">${low}</div><div class="sc-lbl">Low Stock Alert</div></div></div>
+  </div>
+
+  <div class="chart-row">
+    <div class="cc">
+      <div class="cc-head"><div class="cc-title">Inventory Distribution</div><div class="cc-sub">Quantity by product category</div></div>
+      <div class="cc-body"><canvas id="cD"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-head"><div class="cc-title">Supplier Contribution</div><div class="cc-sub">Units per supplier</div></div>
+      <div class="cc-body"><canvas id="cB"></canvas></div>
+    </div>
+  </div>
+
+  <div class="tc">
+    <div class="tc-head">
+      <h4>Inventory List</h4>
+      <div class="tc-acts">
+        <select class="flt" id="sf" onchange="dTbl()">
+          <option value="all">All Stock</option>
+          <option value="lo">Low Stock</option>
+          <option value="ok">In Stock</option>
+        </select>
+        <label class="upl">${IC.excel} Load Excel<input type="file" accept=".xlsx,.xls" onchange="lXL(event)"></label>
+        <button class="btn btn-blue" onclick="goTab('add-product',document.getElementById('nb-add-product'))">${IC.plus} Add</button>
+      </div>
+    </div>
+    <div class="tsc"><table>
+      <thead><tr><th>ID</th><th>Product</th><th>Price</th><th>Qty</th><th>Supplier</th><th>Status</th><th></th></tr></thead>
+      <tbody id="dTb"></tbody>
+    </table></div>
+  </div>
+  </div>`);
+
+  const cfg={responsive:true,maintainAspectRatio:false};
+
+  // DOUGHNUT — Inventory Distribution
+  CH.d=new Chart(document.getElementById('cD'),{type:'doughnut',
+    data:{
+      labels:Object.keys(cM),
+      datasets:[{data:Object.values(cM),backgroundColor:CLRS.slice(0,Object.keys(cM).length),borderWidth:3,borderColor:'#fff',hoverOffset:6}]
+    },
+    options:{...cfg,cutout:'58%',plugins:{legend:{position:'right',labels:{color:'#475569',font:{size:12,family:'Plus Jakarta Sans'},padding:14,boxWidth:12,usePointStyle:true}}}}
+  });
+
+  // BAR — Supplier Contribution
+  CH.b=new Chart(document.getElementById('cB'),{type:'bar',
+    data:{
+      labels:Object.keys(sM),
+      datasets:[{data:Object.values(sM),backgroundColor:CLRS.slice(0,Object.keys(sM).length),borderRadius:6,borderSkipped:false}]
+    },
+    options:{...cfg,plugins:{legend:{display:false}},scales:{
+      x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{display:false}},
+      y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5fb'}}
+    }}
+  });
+
+  dTbl();
+}
+
+function dTbl(){
+  const f=document.getElementById('sf')?.value||'all';
+  const q=(document.getElementById('gS')?.value||'').toLowerCase();
+  const d=inv.filter(i=>{
+    const ms=i.ProductName.toLowerCase().includes(q)||i.ProductID.toLowerCase().includes(q)||i.Supplier.toLowerCase().includes(q);
+    const mf=f==='all'?true:f==='lo'?i.Quantity<50:i.Quantity>=50;
+    return ms&&mf;
+  }).slice(0,30);
+  const tb=document.getElementById('dTb');if(!tb)return;
+  tb.innerHTML=d.length?d.map(r=>`<tr>
+    <td><strong>${r.ProductID}</strong></td>
+    <td>${r.ProductName}</td>
+    <td class="tdm">$${(+r.Price).toFixed(2)}</td>
+    <td><strong>${r.Quantity}</strong></td>
+    <td class="tdm">${r.Supplier}</td>
+    <td><span class="pl ${r.Quantity<50?'lo':'ok'}">${r.Quantity<50?'Low Stock':'In Stock'}</span></td>
+    <td style="white-space:nowrap">
+      <button class="ab ed" onclick="eR(${r._id},'dashboard')" title="Edit">${IC.pen}</button>
+      <button class="ab dl" onclick="dR(${r._id},'dashboard')" title="Delete">${IC.del}</button>
+    </td></tr>`).join(''):
+    `<tr><td colspan="7"><div class="empty">${IC.box}<p>No records found</p></div></td></tr>`;
+}
+
+// ═══ PRODUCTS ═══
+function rP(){
+  P(`<div class="fd">
+  <div class="ph"><div><h3>Products</h3><div class="ph-sub">${inv.length} records total</div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="srch" style="width:180px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search products…" oninput="pTbl(this.value)" style="border:none;outline:none;background:none;color:var(--tx);font-size:.82rem;width:100%;margin-left:6px"></div>
+      <button class="btn btn-blue" onclick="goTab('add-product',document.getElementById('nb-add-product'))">${IC.plus} Add Product</button>
+    </div>
+  </div>
+  <div class="tc"><div class="tsc"><table>
+    <thead><tr><th>ID</th><th>Product Name</th><th>Price</th><th>Qty</th><th>Supplier</th><th>Status</th><th></th></tr></thead>
+    <tbody id="pTb"></tbody>
+  </table></div></div></div>`);
+  pTbl('');
+}
+function pTbl(q){
+  const d=inv.filter(i=>i.ProductName.toLowerCase().includes(q.toLowerCase())||i.ProductID.toLowerCase().includes(q.toLowerCase())||i.Supplier.toLowerCase().includes(q.toLowerCase()));
+  const tb=document.getElementById('pTb');if(!tb)return;
+  tb.innerHTML=d.length?d.map(r=>`<tr>
+    <td><strong>${r.ProductID}</strong></td><td>${r.ProductName}</td>
+    <td class="tdm">$${(+r.Price).toFixed(2)}</td><td><strong>${r.Quantity}</strong></td>
+    <td class="tdm">${r.Supplier}</td>
+    <td><span class="pl ${r.Quantity<50?'lo':'ok'}">${r.Quantity<50?'Low Stock':'In Stock'}</span></td>
+    <td style="white-space:nowrap">
+      <button class="ab ed" onclick="eR(${r._id},'products')">${IC.pen}</button>
+      <button class="ab dl" onclick="dR(${r._id},'products')">${IC.del}</button>
+    </td></tr>`).join(''):
+    `<tr><td colspan="7"><div class="empty">${IC.box}<p>No products found</p></div></td></tr>`;
+}
+
+// ═══ ADD PRODUCT ═══
+function rAP(){
+  const ops=[...new Set(inv.map(i=>i.Supplier))].map(s=>`<option value="${s}">${s}</option>`).join('');
+  P(`<div class="fd"><div class="ph"><h3>Add New Product</h3></div>
+  <div class="fc">
+    <div class="fc-title">${IC.plus} Product Information</div>
+    <div class="fg">
+      <div class="fg3"><label class="flbl">Product ID</label><input class="fin" id="nI" placeholder="e.g. P051"></div>
+      <div class="fg3"><label class="flbl">Product Name</label><input class="fin" id="nN" placeholder="e.g. Electronics"></div>
+      <div class="fg3"><label class="flbl">Price ($)</label><input class="fin" type="number" id="nPr" placeholder="49.99" step="0.01" min="0"></div>
+      <div class="fg3"><label class="flbl">Quantity</label><input class="fin" type="number" id="nQ" placeholder="100" min="0"></div>
+      <div class="fg3 fg2"><label class="flbl">Supplier</label>
+        <select class="fin" id="nSp" onchange="document.getElementById('nSpX').style.display=this.value==='__n'?'block':'none'">
+          <option value="">— Select Supplier —</option>${ops}<option value="__n">+ Add New Supplier</option>
+        </select>
+      </div>
+      <div class="fg3 fg2" id="nSpX" style="display:none"><label class="flbl">New Supplier Name</label><input class="fin" id="nSN" placeholder="Supplier name"></div>
+    </div>
+    <div class="fbt">
+      <button class="btn btn-blue" onclick="svProd()">${IC.save} Save Product</button>
+      <button class="btn btn-gh" onclick="goTab('products',document.getElementById('nb-products'))">Cancel</button>
+    </div>
+  </div></div>`);
+}
+function svProd(){
+  const id=g('nI'),nm=g('nN'),pr=parseFloat(g('nPr')),qt=parseInt(g('nQ'));
+  let sp=g('nSp');if(sp==='__n')sp=g('nSN');
+  if(!id||!nm||isNaN(pr)||isNaN(qt)||!sp){toast('Please fill all fields correctly!','er');return;}
+  inv.push({ProductID:id,ProductName:nm,Price:pr,Quantity:qt,Supplier:sp,_id:Date.now()});
+  aL('add',`Product added: ${nm} (${id})`);
+  toast(`"${nm}" added successfully!`,'ok');
+  goTab('products',document.getElementById('nb-products'));
+}
+
+// ═══ SUPPLIERS ═══
+function rS(){
+  const sm={};inv.forEach(i=>{if(!sm[i.Supplier])sm[i.Supplier]={c:0,q:0,p:[]};sm[i.Supplier].c++;sm[i.Supplier].q+=i.Quantity;sm[i.Supplier].p.push(i.Price);});
+  const cl=['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6'];
+  const rows=Object.entries(sm).map(([s,d],i)=>{
+    const avg=(d.p.reduce((a,b)=>a+b,0)/d.p.length).toFixed(2);
+    return`<tr><td><div style="display:flex;align-items:center;gap:10px"><div class="sav" style="background:${cl[i%cl.length]}">${s[0]}</div><strong>${s}</strong></div></td>
+    <td class="tdm">${d.c}</td><td><strong>${d.q.toLocaleString()}</strong></td><td class="tdm">$${avg}</td>
+    <td><span class="pl ok">Active</span></td></tr>`;}).join('');
+  P(`<div class="fd">
+  <div class="ph"><div><h3>Suppliers</h3><div class="ph-sub">${Object.keys(sm).length} active suppliers</div></div>
+    <button class="btn btn-blue" onclick="goTab('add-supplier',document.getElementById('nb-add-supplier'))">${IC.plus} Add Supplier</button>
+  </div>
+  <div class="tc"><div class="tsc"><table>
+    <thead><tr><th>Supplier</th><th>Products</th><th>Total Units</th><th>Avg Price</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div></div></div>`);
+}
+
+// ═══ ADD SUPPLIER ═══
+function rAS(){
+  P(`<div class="fd"><div class="ph"><h3>Add Supplier</h3></div>
+  <div class="fc">
+    <div class="fc-title">${IC.truck} Supplier Details</div>
+    <div class="fg">
+      <div class="fg3 fg2"><label class="flbl">Supplier Name</label><input class="fin" id="sN" placeholder="e.g. East Corp"></div>
+      <div class="fg3"><label class="flbl">Contact Person</label><input class="fin" id="sC" placeholder="e.g. Ali Khan"></div>
+      <div class="fg3"><label class="flbl">Email</label><input class="fin" type="email" id="sE" placeholder="contact@company.com"></div>
+      <div class="fg3"><label class="flbl">Phone</label><input class="fin" id="sP" placeholder="+92 300 0000000"></div>
+      <div class="fg3"><label class="flbl">Location</label><input class="fin" id="sL" placeholder="City, Country"></div>
+    </div>
+    <div class="fbt">
+      <button class="btn btn-blue" onclick="svSup()">${IC.save} Save Supplier</button>
+      <button class="btn btn-gh" onclick="goTab('suppliers',document.getElementById('nb-suppliers'))">Cancel</button>
+    </div>
+  </div></div>`);
+}
+function svSup(){
+  const nm=g('sN');if(!nm){toast('Supplier name is required!','er');return;}
+  aL('add',`Supplier added: ${nm}`);toast(`"${nm}" supplier added!`,'ok');
+  goTab('suppliers',document.getElementById('nb-suppliers'));
+}
+
+// ═══ INVENTORY ═══
+function rI(){
+  const cm={};inv.forEach(i=>{if(!cm[i.ProductName])cm[i.ProductName]={q:0,c:0};cm[i.ProductName].q+=i.Quantity;cm[i.ProductName].c++;});
+  const tQ=inv.reduce((s,i)=>s+i.Quantity,0);
+  const low=inv.filter(i=>i.Quantity<50).length;
+  const rows=Object.entries(cm).map(([nm,d],idx)=>{
+    const pct=((d.q/tQ)*100).toFixed(1);
+    return`<tr>
+      <td><strong>${nm}</strong></td><td class="tdm">${d.c}</td><td><strong>${d.q.toLocaleString()}</strong></td>
+      <td><div class="pw"><div class="pg"><div class="pgf" style="width:${pct}%;background:${CLRS[idx%CLRS.length]}"></div></div><span class="pct">${pct}%</span></div></td>
+      <td><span class="pl ${d.q<300?'lo':'ok'}">${d.q<300?'Low':'Good'}</span></td></tr>`;}).join('');
+  P(`<div class="fd">
+  <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+    <div class="sc"><div class="sc-ico bl">${IC.box}</div><div class="sc-info"><div class="sc-val">${inv.length}</div><div class="sc-lbl">Total Records</div></div></div>
+    <div class="sc"><div class="sc-ico or">${IC.cubes}</div><div class="sc-info"><div class="sc-val">${tQ.toLocaleString()}</div><div class="sc-lbl">Total Units</div></div></div>
+    <div class="sc"><div class="sc-ico re">${IC.warn}</div><div class="sc-info"><div class="sc-val">${low}</div><div class="sc-lbl">Low Stock</div></div></div>
+  </div>
+  <div class="tc">
+    <div class="tc-head"><h4>Inventory by Category</h4>
+      <div class="srch" style="width:160px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Filter…" oninput="fI(this.value)" style="border:none;outline:none;background:none;color:var(--tx);font-size:.82rem;width:100%;margin-left:6px">
+      </div>
+    </div>
+    <div class="tsc"><table>
+      <thead><tr><th>Category</th><th>Records</th><th>Total Qty</th><th>Distribution</th><th>Health</th></tr></thead>
+      <tbody id="iT">${rows}</tbody>
+    </table></div>
+  </div></div>`);
+}
+function fI(q){document.querySelectorAll('#iT tr').forEach(r=>{r.style.display=r.cells[0]?.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
+
+// ═══ LOGS ═══
+function rL(){
+  P(`<div class="fd">
+  <div class="ph"><h3>Stock Logs</h3><button class="btn btn-red" onclick="clL()">${IC.del} Clear Logs</button></div>
+  <div class="tc" style="padding:${logs.length?'0':'20px'}">
+    ${!logs.length?`<div class="empty">${IC.info}<p>No activity logs yet.</p></div>`:
+    `<div style="padding:0 20px">${logs.map(l=>`
+    <div class="li">
+      <div class="lic ${l.t==='del'?'r':l.t==='ed'?'b':'g'}">${l.t==='del'?IC.del:l.t==='ed'?IC.pen:IC.plus}</div>
+      <div><p style="font-size:.86rem;font-weight:600;margin-bottom:2px">${l.m}</p><span style="font-size:.76rem;color:var(--tx3)">${l.ts}</span></div>
+    </div>`).join('')}</div>`}
+  </div></div>`);
+}
+function clL(){logs=[];toast('Logs cleared','if');rL();}
+
+// ═══ SETTINGS ═══
+function rSt(){
+  P(`<div class="fd">
+  <div class="ph"><h3>Settings</h3></div>
+  <div class="sg">
+    <div class="scc">
+      <div class="scc-title" style="color:var(--blue)">${IC.sliders} General Settings</div>
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div class="fg3"><label class="flbl">Low Stock Threshold</label><input class="fin" type="number" value="50" min="1"></div>
+        <div class="fg3"><label class="flbl">Currency</label><select class="fin"><option>$ USD</option><option>₨ PKR</option><option>€ EUR</option><option>£ GBP</option></select></div>
+        <div class="fg3"><label class="flbl">Dashboard Name</label><input class="fin" value="SmartInv. Dashboard"></div>
+      </div>
+      <div style="margin-top:16px"><button class="btn btn-blue" onclick="toast('Settings saved!','ok')">${IC.save} Save Settings</button></div>
+    </div>
+    <div class="scc">
+      <div class="scc-title" style="color:var(--green)">${IC.db} Data Management</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">
+        <label class="upl">${IC.excel} Import Excel File<input type="file" accept=".xlsx,.xls" onchange="lXL(event)"></label>
+        <button class="btn btn-red" style="width:fit-content" onclick="rstD()">${IC.reset} Reset to Default Data</button>
+      </div>
+      <div class="si2">
+        <div>Total Products: <strong>${inv.length}</strong></div>
+        <div>Active Suppliers: <strong>${[...new Set(inv.map(i=>i.Supplier))].length}</strong></div>
+        <div>Total Units: <strong>${inv.reduce((s,i)=>s+i.Quantity,0).toLocaleString()}</strong></div>
+        <div>Activity Logs: <strong>${logs.length}</strong></div>
+      </div>
+    </div>
+  </div></div>`);
+}
+
+// ═══ EDIT / DELETE ═══
+function eR(id,rt){
+  const r=inv.find(i=>i._id===id);if(!r)return;
+  const nm=prompt('Product Name:',r.ProductName);if(nm===null)return;
+  const pr=prompt('Price ($):',r.Price);if(pr===null)return;
+  const qt=prompt('Quantity:',r.Quantity);if(qt===null)return;
+  const sp=prompt('Supplier:',r.Supplier);if(sp===null)return;
+  if(!nm||isNaN(+pr)||isNaN(+qt)||!sp){toast('Invalid input!','er');return;}
+  r.ProductName=nm;r.Price=+pr;r.Quantity=+qt;r.Supplier=sp;
+  aL('ed',`Edited: ${nm} (${r.ProductID})`);
+  toast('Product updated!','ok');goTab(rt,null);
+}
+function dR(id,rt){
+  const r=inv.find(i=>i._id===id);if(!r)return;
+  if(!confirm(`Delete "${r.ProductName}"?`))return;
+  const nm=r.ProductName;inv=inv.filter(i=>i._id!==id);
+  aL('del',`Deleted: ${nm}`);toast(`"${nm}" deleted`,'er');goTab(rt,null);
+}
+
+// ═══ EXCEL UPLOAD ═══
+function lXL(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      inv=j.map((r,i)=>({...r,_id:Date.now()+i}));
+      aL('add',`Excel loaded: ${f.name} (${j.length} records)`);
+      toast(`Loaded ${j.length} records from ${f.name}!`,'ok');
+      goTab(cT,null);
+    }catch(e){toast('Error reading Excel file!','er');}
+  };
+  rd.readAsArrayBuffer(f);
+}
+
+// ═══ UTILS ═══
+function P(h){document.getElementById('ct').innerHTML=h;}
+function g(id){return document.getElementById(id)?.value?.trim()||'';}
+function onS(){if(cT==='dashboard')dTbl();}
+function aL(t,m){logs.unshift({t,m,ts:new Date().toLocaleString()});}
+function rstD(){if(confirm('Reset to original 50 records?')){inv=RAW.map((r,i)=>({...r,_id:i}));logs=[];toast('Data reset!','if');goTab('dashboard',document.getElementById('nb-dashboard'));}}
+
+function toast(msg,type='ok'){
+  const w=document.getElementById('tw');
+  const ic={ok:IC.ok,er:IC.x,if:IC.info}[type]||IC.ok;
+  const el=document.createElement('div');
+  el.className=`tst ${type}`;el.innerHTML=`${ic} ${msg}`;
+  w.appendChild(el);
+  setTimeout(()=>{el.style.animation='tIn .22s reverse both';setTimeout(()=>el.remove(),220);},3200);
+}
+
+document.addEventListener('DOMContentLoaded',()=>rD());
+</script>
+</body>
+</html>
