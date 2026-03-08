@@ -241,7 +241,8 @@ tbody tr:last-child td{border-bottom:none;}
 }
 .pl::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
 .pl.ok{background:#dcfce7;color:#16a34a;}
-.pl.lo{background:#fee2e2;color:#dc2626;}
+.pl.lo{background:#fef9c3;color:#ca8a04;}
+.pl.out{background:#fee2e2;color:#dc2626;}
 
 .ab{
   width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;
@@ -442,7 +443,7 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="tb-r">
       <div class="srch">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="gS" placeholder="Search…" oninput="onS()">
+        <input type="text" id="gS" placeholder="Search…" oninput="onS()" autocomplete="off">
       </div>
       <div class="tb-icon" onclick="goTab('logs',document.getElementById('nb-logs'))">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -511,8 +512,9 @@ function rD(){
   const total=inv.length;
   const sups=[...new Set(inv.map(i=>i.Supplier))];
   const tQ=inv.reduce((s,i)=>s+i.Quantity,0);
-  const low=inv.filter(i=>i.Quantity<50).length;
-  document.getElementById('nB').textContent=low;
+  const low=inv.filter(i=>i.Quantity>0&&i.Quantity<300).length;
+  const outOfStock=inv.filter(i=>i.Quantity===0).length;
+  document.getElementById('nB').textContent=low+outOfStock;
 
   // category & supplier maps
   const cM={},sM={};
@@ -546,7 +548,8 @@ function rD(){
       <div class="tc-acts">
         <select class="flt" id="sf" onchange="dTbl()">
           <option value="all">All Stock</option>
-          <option value="lo">Low Stock</option>
+          <option value="lo">Low Stock (&lt;300)</option>
+          <option value="out">Out of Stock</option>
           <option value="ok">In Stock</option>
         </select>
         <label class="upl">${IC.excel} Load Excel<input type="file" accept=".xlsx,.xls" onchange="lXL(event)"></label>
@@ -591,21 +594,24 @@ function dTbl(){
   const q=(document.getElementById('gS')?.value||'').toLowerCase();
   const d=inv.filter(i=>{
     const ms=i.ProductName.toLowerCase().includes(q)||i.ProductID.toLowerCase().includes(q)||i.Supplier.toLowerCase().includes(q);
-    const mf=f==='all'?true:f==='lo'?i.Quantity<50:i.Quantity>=50;
+    const mf=f==='all'?true:f==='lo'?(i.Quantity>0&&i.Quantity<300):f==='out'?i.Quantity===0:i.Quantity>=300;
     return ms&&mf;
   }).slice(0,30);
   const tb=document.getElementById('dTb');if(!tb)return;
-  tb.innerHTML=d.length?d.map(r=>`<tr>
+  tb.innerHTML=d.length?d.map(r=>{
+    const st=r.Quantity===0?'out':r.Quantity<300?'lo':'ok';
+    const stLabel=r.Quantity===0?'Out of Stock':r.Quantity<300?'Low Stock':'In Stock';
+    return`<tr>
     <td><strong>${r.ProductID}</strong></td>
     <td>${r.ProductName}</td>
     <td class="tdm">$${(+r.Price).toFixed(2)}</td>
-    <td><strong>${r.Quantity}</strong></td>
+    <td><strong style="color:${r.Quantity===0?'#ef4444':r.Quantity<300?'#f59e0b':'inherit'}">${r.Quantity}</strong></td>
     <td class="tdm">${r.Supplier}</td>
-    <td><span class="pl ${r.Quantity<50?'lo':'ok'}">${r.Quantity<50?'Low Stock':'In Stock'}</span></td>
+    <td><span class="pl ${st}">${stLabel}</span></td>
     <td style="white-space:nowrap">
       <button class="ab ed" onclick="eR(${r._id},'dashboard')" title="Edit">${IC.pen}</button>
       <button class="ab dl" onclick="dR(${r._id},'dashboard')" title="Delete">${IC.del}</button>
-    </td></tr>`).join(''):
+    </td></tr>`;}).join(''):
     `<tr><td colspan="7"><div class="empty">${IC.box}<p>No records found</p></div></td></tr>`;
 }
 
@@ -628,15 +634,18 @@ function rP(){
 function pTbl(q){
   const d=inv.filter(i=>i.ProductName.toLowerCase().includes(q.toLowerCase())||i.ProductID.toLowerCase().includes(q.toLowerCase())||i.Supplier.toLowerCase().includes(q.toLowerCase()));
   const tb=document.getElementById('pTb');if(!tb)return;
-  tb.innerHTML=d.length?d.map(r=>`<tr>
+  tb.innerHTML=d.length?d.map(r=>{
+    const st=r.Quantity===0?'out':r.Quantity<300?'lo':'ok';
+    const stLabel=r.Quantity===0?'Out of Stock':r.Quantity<300?'Low Stock':'In Stock';
+    return`<tr>
     <td><strong>${r.ProductID}</strong></td><td>${r.ProductName}</td>
-    <td class="tdm">$${(+r.Price).toFixed(2)}</td><td><strong>${r.Quantity}</strong></td>
+    <td class="tdm">$${(+r.Price).toFixed(2)}</td><td><strong style="color:${r.Quantity===0?'#ef4444':r.Quantity<300?'#ca8a04':'inherit'}">${r.Quantity}</strong></td>
     <td class="tdm">${r.Supplier}</td>
-    <td><span class="pl ${r.Quantity<50?'lo':'ok'}">${r.Quantity<50?'Low Stock':'In Stock'}</span></td>
+    <td><span class="pl ${st}">${stLabel}</span></td>
     <td style="white-space:nowrap">
       <button class="ab ed" onclick="eR(${r._id},'products')">${IC.pen}</button>
       <button class="ab dl" onclick="dR(${r._id},'products')">${IC.del}</button>
-    </td></tr>`).join(''):
+    </td></tr>`;}).join(''):
     `<tr><td colspan="7"><div class="empty">${IC.box}<p>No products found</p></div></td></tr>`;
 }
 
@@ -721,13 +730,13 @@ function svSup(){
 function rI(){
   const cm={};inv.forEach(i=>{if(!cm[i.ProductName])cm[i.ProductName]={q:0,c:0};cm[i.ProductName].q+=i.Quantity;cm[i.ProductName].c++;});
   const tQ=inv.reduce((s,i)=>s+i.Quantity,0);
-  const low=inv.filter(i=>i.Quantity<50).length;
+  const low=inv.filter(i=>i.Quantity>0&&i.Quantity<300).length;
   const rows=Object.entries(cm).map(([nm,d],idx)=>{
     const pct=((d.q/tQ)*100).toFixed(1);
     return`<tr>
       <td><strong>${nm}</strong></td><td class="tdm">${d.c}</td><td><strong>${d.q.toLocaleString()}</strong></td>
       <td><div class="pw"><div class="pg"><div class="pgf" style="width:${pct}%;background:${CLRS[idx%CLRS.length]}"></div></div><span class="pct">${pct}%</span></div></td>
-      <td><span class="pl ${d.q<300?'lo':'ok'}">${d.q<300?'Low':'Good'}</span></td></tr>`;}).join('');
+      <td><span class="pl ${d.q===0?'out':d.q<300?'lo':'ok'}">${d.q===0?'Out of Stock':d.q<300?'Low':'Good'}</span></td></tr>`;}).join('');
   P(`<div class="fd">
   <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
     <div class="sc"><div class="sc-ico bl">${IC.box}</div><div class="sc-info"><div class="sc-val">${inv.length}</div><div class="sc-lbl">Total Records</div></div></div>
@@ -832,7 +841,11 @@ function lXL(ev){
 // ═══ UTILS ═══
 function P(h){document.getElementById('ct').innerHTML=h;}
 function g(id){return document.getElementById(id)?.value?.trim()||'';}
-function onS(){if(cT==='dashboard')dTbl();}
+function onS(){
+  const q=(document.getElementById('gS')?.value||'').toLowerCase().trim();
+  if(cT==='dashboard'){dTbl();}
+  else if(cT==='products'){pTbl(q);}
+}
 function aL(t,m){logs.unshift({t,m,ts:new Date().toLocaleString()});}
 function rstD(){if(confirm('Reset to original 50 records?')){inv=RAW.map((r,i)=>({...r,_id:i}));logs=[];toast('Data reset!','if');goTab('dashboard',document.getElementById('nb-dashboard'));}}
 
