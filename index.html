@@ -789,7 +789,7 @@ function rSt(){
     <div class="scc">
       <div class="scc-title" style="color:var(--green)">${IC.db} Data Management</div>
       <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">
-        <label class="upl">${IC.excel} Import Excel File<input type="file" accept=".xlsx,.xls" onchange="lXL(event)"></label>
+        <label class="upl">${IC.excel} Import Excel Files<input type="file" accept=".xlsx,.xls" multiple onchange="lXL(event)"></label>
         <button class="btn btn-red" style="width:fit-content" onclick="rstD()">${IC.reset} Reset to Default Data</button>
       </div>
       <div class="si2">
@@ -823,19 +823,27 @@ function dR(id,rt){
 
 // ═══ EXCEL UPLOAD ═══
 function lXL(ev){
-  const f=ev.target.files[0];if(!f)return;
-  const rd=new FileReader();
-  rd.onload=e=>{
-    try{
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-      const j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-      inv=j.map((r,i)=>({...r,_id:Date.now()+i}));
-      aL('add',`Excel loaded: ${f.name} (${j.length} records)`);
-      toast(`Loaded ${j.length} records from ${f.name}!`,'ok');
-      goTab(cT,null);
-    }catch(e){toast('Error reading Excel file!','er');}
-  };
-  rd.readAsArrayBuffer(f);
+  const files=Array.from(ev.target.files);if(!files.length)return;
+  let loaded=0,totalRec=0;
+  files.forEach(f=>{
+    const rd=new FileReader();
+    rd.onload=e=>{
+      try{
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        const mapped=j.map((r,i)=>({...r,_id:(Date.now()+(Math.random()*1e6|0)+i)}));
+        inv=[...inv,...mapped];
+        totalRec+=j.length;
+        aL('add',`Excel loaded: ${f.name} (${j.length} records)`);
+        loaded++;
+        if(loaded===files.length){
+          toast(`${files.length} file${files.length>1?'s':''} loaded — ${totalRec} records added!`,'ok');
+          goTab(cT,null);
+        }
+      }catch(err){toast(`Error reading ${f.name}!`,'er');}
+    };
+    rd.readAsArrayBuffer(f);
+  });
 }
 
 // ═══ UTILS ═══
